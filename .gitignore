@@ -1,0 +1,30 @@
+# Local-only repository - keys ARE committed for version control
+# WARNING: This repo should NEVER have a remote configured
+
+# Build artifacts
+*.img
+*.raw
+*.tar.gz
+*.tar
+*.zip
+
+# Temporary files
+*.tmp
+.direnv/
+result
+result-*
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# AI/LLM tool configs (user-specific, not committed)
+.claude/
+.cursor/
+.copilot/
+.aider*
+.continue/
+.mcp.json
