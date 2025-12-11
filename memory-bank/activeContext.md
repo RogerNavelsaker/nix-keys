@@ -15,13 +15,13 @@ Repository migrated to pass + Yubikey GPG encryption model.
 
 ## Recent Events
 
-1. [2025-12-11] Migrated private keys to pass (GPG-encrypted)
-2. [2025-12-11] Moved public keys to public/ directory
-3. [2025-12-11] Updated all scripts to use pass for key operations
-4. [2025-12-11] Removed push blocking (encryption makes remote safe)
-5. [2025-12-11] Cleaned git history to remove plaintext keys
-6. [2025-12-11] Pushed to GitHub (hellst0rm/nix-keys - private)
-7. [2025-12-11] Updated AGENTS.md and README.md
+1. [2025-12-11] Git history fully sanitized - squashed to single commit
+2. [2025-12-11] Removed nested memory-bank/memory-bank/ directory
+3. [2025-12-11] Force-pushed clean history to GitHub
+4. [2025-12-11] Migrated private keys to pass (GPG-encrypted)
+5. [2025-12-11] Moved public keys to public/ directory
+6. [2025-12-11] Updated all scripts to use pass for key operations
+7. [2025-12-11] Pushed to GitHub (hellst0rm/nix-keys - private)
 8. [2025-12-11] Renamed repo from nixos-keys to nix-keys
 
 ## Active Decisions
