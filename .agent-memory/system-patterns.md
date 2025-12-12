@@ -100,3 +100,6 @@ PASSWORD_STORE_DIR=./private pass show home/<username>/id_ed25519
 - uses [[pass]]
 - uses [[Yubikey GPG]]
 - extracted_to [[patterns/gpg-ssh-key-management-pattern]]
+- extracted_to [[patterns/key-generation-pattern]]
+- extracted_to [[patterns/deployment-media-pattern]]
+- extracted_to [[patterns/github-deploy-key-integration]]

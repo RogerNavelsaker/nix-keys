@@ -23,7 +23,8 @@ pkgs.devshell.mkShell {
     gnupg
 
     # Disk image tools
-    squashfsTools # mksquashfs, unsquashfs
+    ventoy # Ventoy USB/disk image creation
+    libguestfs-with-appliance # guestmount for FUSE mounting
 
     # Archive tools
     gnutar
@@ -33,6 +34,8 @@ pkgs.devshell.mkShell {
     coreutils
     findutils
     tree
+    util-linux # losetup
+    jq # JSON processing
   ];
 
   commands = [
@@ -60,7 +63,7 @@ pkgs.devshell.mkShell {
     {
       category = "disk";
       name = "create";
-      help = "Create disk image or archive: create <disk|archive> <hostname> (--help for details)";
+      help = "Create archive or Ventoy disk: create <archive|disk> <hostname> [iso-path] (--help)";
       command = ''
         ${scripts.create}/bin/create "$@"
       '';

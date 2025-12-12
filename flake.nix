@@ -38,6 +38,18 @@
         pkgs = import nixpkgs {
           inherit system;
           overlays = [ devshell.overlays.default ];
+          config = {
+            # Ventoy is unfree
+            allowUnfreePredicate =
+              pkg:
+              builtins.elem (pkgs.lib.getName pkg) [
+                "ventoy"
+              ];
+            # Ventoy uses binary blobs (security concern acknowledged)
+            permittedInsecurePackages = [
+              "ventoy-1.1.07"
+            ];
+          };
         };
 
         hooks = git-hooks.lib.${system}.run {
