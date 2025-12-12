@@ -99,3 +99,4 @@ PASSWORD_STORE_DIR=./private pass show home/<username>/id_ed25519
 - defines [[Deployment Media Pattern]]
 - uses [[pass]]
 - uses [[Yubikey GPG]]
+- extracted_to [[patterns/gpg-ssh-key-management-pattern]]
