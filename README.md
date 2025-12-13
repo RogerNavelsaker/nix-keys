@@ -10,10 +10,10 @@ Private keys are GPG-encrypted via `pass` (password-store). Decryption requires 
 nix-keys/
 ├── private/           # GPG-encrypted pass store
 │   ├── hosts/         # Host keys (encrypted)
-│   └── home/          # User keys (encrypted)
+│   └── users/         # User keys (encrypted)
 └── public/            # Public keys (plaintext)
     ├── hosts/
-    └── home/
+    └── users/
 ```
 
 ## Quick Start
@@ -166,7 +166,7 @@ private/
 ├── hosts/<hostname>/
 │   ├── ssh_host_ed25519_key.gpg     # Encrypted host key
 │   └── deploy_key_ed25519.gpg       # Encrypted deploy key
-└── home/<username>/
+└── users/<username>/
     └── id_ed25519.gpg               # Encrypted user key
 ```
 
@@ -177,7 +177,7 @@ public/
 ├── hosts/<hostname>/
 │   ├── ssh_host_ed25519_key.pub     # Public host key
 │   └── deploy_key_ed25519.pub       # Public deploy key
-└── home/<username>/
+└── users/<username>/
     └── id_ed25519.pub               # Public user key
 ```
 
@@ -189,7 +189,7 @@ Private keys require Yubikey for decryption:
 # In the nix-keys directory
 PASSWORD_STORE_DIR=./private pass show hosts/iso/ssh_host_ed25519_key
 PASSWORD_STORE_DIR=./private pass show hosts/iso/deploy_key_ed25519
-PASSWORD_STORE_DIR=./private pass show home/rona/id_ed25519
+PASSWORD_STORE_DIR=./private pass show users/rona/id_ed25519
 ```
 
 Or with the shell environment (PASSWORD_STORE_DIR is set automatically):
@@ -212,7 +212,7 @@ pass show hosts/iso/ssh_host_ed25519_key
 - Generated with `genkey deploy`
 - Upload to GitHub with `deploy add`
 
-**User Keys** (`home/<username>/id_ed25519`)
+**User Keys** (`users/<username>/id_ed25519`)
 - Personal SSH authentication
 - Generated with `genkey user`
 

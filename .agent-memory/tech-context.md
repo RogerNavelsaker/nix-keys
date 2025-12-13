@@ -30,7 +30,7 @@ tags:
 
 - [constraint] LOCAL-ONLY repository
 - [constraint] Never push to any remote
-- [setup] Keys stored in hosts/ and home/ directories
+- [setup] Keys stored in hosts/ and users/ directories
 - [setup] Devshell provides all necessary tools
 
 ## Commands Available

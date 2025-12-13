@@ -19,13 +19,13 @@ nix-keys/
 │   │   └── <hostname>/
 │   │       ├── ssh_host_ed25519_key.gpg
 │   │       └── deploy_key_ed25519.gpg
-│   └── home/
+│   └── users/
 │       └── <username>/
 │           └── id_ed25519.gpg
 ├── public/            # Plaintext public keys
 │   ├── hosts/
 │   │   └── <hostname>/*.pub
-│   └── home/
+│   └── users/
 │       └── <username>/*.pub
 ├── iso-keys.img       # QEMU disk output
 └── iso-keys.tar.gz    # Ventoy archive output
@@ -77,7 +77,7 @@ deploy add <hostname> <owner/repo>
 ```bash
 # Access private keys directly (requires Yubikey)
 PASSWORD_STORE_DIR=./private pass show hosts/<hostname>/ssh_host_ed25519_key
-PASSWORD_STORE_DIR=./private pass show home/<username>/id_ed25519
+PASSWORD_STORE_DIR=./private pass show users/<username>/id_ed25519
 ```
 
 ## Security Model

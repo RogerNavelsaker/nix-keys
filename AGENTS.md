@@ -18,13 +18,13 @@ nix-keys/
 │   │   └── <hostname>/
 │   │       ├── ssh_host_ed25519_key.gpg
 │   │       └── deploy_key_ed25519.gpg
-│   └── home/          # Encrypted user keys
+│   └── users/         # Encrypted user keys
 │       └── <username>/
 │           └── id_ed25519.gpg
 ├── public/            # Plaintext public keys
 │   ├── hosts/
 │   │   └── <hostname>/*.pub
-│   └── home/
+│   └── users/
 │       └── <username>/*.pub
 ├── scripts/           # Helper scripts
 ├── githooks.nix       # Git hooks
@@ -37,7 +37,7 @@ nix-keys/
 |------|------------------|-----------------|---------|
 | SSH Host Keys | `private/hosts/<host>/ssh_host_ed25519_key.gpg` | `public/hosts/<host>/*.pub` | Server identity |
 | Deploy Keys | `private/hosts/<host>/deploy_key_ed25519.gpg` | `public/hosts/<host>/*.pub` | Git repo access |
-| User Keys | `private/home/<user>/id_ed25519.gpg` | `public/home/<user>/*.pub` | Personal SSH auth |
+| User Keys | `private/users/<user>/id_ed25519.gpg` | `public/users/<user>/*.pub` | Personal SSH auth |
 
 ## Commands
 
@@ -102,7 +102,7 @@ show user rona
 
 # Access private keys (requires Yubikey)
 PASSWORD_STORE_DIR=./private pass show hosts/iso/ssh_host_ed25519_key
-PASSWORD_STORE_DIR=./private pass show home/rona/id_ed25519
+PASSWORD_STORE_DIR=./private pass show users/rona/id_ed25519
 ```
 
 ## GPG Key

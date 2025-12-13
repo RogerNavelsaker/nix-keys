@@ -35,7 +35,7 @@ Local-only SSH and deploy key management for NixOS ISO deployments.
 
 - `hosts/<hostname>/ssh/` - SSH host keys
 - `hosts/<hostname>/deploy/` - Deploy keys
-- `home/<username>/` - User SSH keys
+- `users/<username>/` - User SSH keys
 
 ## FORBIDDEN Operations
 
