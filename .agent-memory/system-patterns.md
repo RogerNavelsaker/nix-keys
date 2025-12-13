@@ -103,3 +103,16 @@ PASSWORD_STORE_DIR=./private pass show home/<username>/id_ed25519
 - extracted_to [[patterns/key-generation-pattern]]
 - extracted_to [[patterns/deployment-media-pattern]]
 - extracted_to [[patterns/github-deploy-key-integration]]
+
+
+## Deployment Media Pattern (requires Yubikey)
+
+
+```bash
+# Ventoy disk with ISO and key injection
+create disk <hostname> <iso-path> [-u users] [-o output.img]
+
+# Archive for Ventoy injection only
+create archive <hostname> [-u users] [-o output.tar.gz]
+```
+

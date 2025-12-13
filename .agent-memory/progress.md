@@ -38,7 +38,10 @@ None currently.
 
 ## REMINDER
 
-This repository is LOCAL-ONLY. Never push to any remote.
+
+- This repo: generates keys, archives, Ventoy disks (takes ISO as input)
+- nix-config: builds ISOs, runs QEMU testing with disk from this repo
+
 
 ## Relations
 

@@ -15,14 +15,17 @@ Repository migrated to pass + Yubikey GPG encryption model.
 
 ## Recent Events
 
-1. [2025-12-12] Renamed memory-bank/ to .agent-memory/ with kebab-case files
-2. [2025-12-12] Re-registered project with Basic Memory at new path
-3. [2025-12-11] Git history fully sanitized - squashed to single commit
-4. [2025-12-11] Removed nested memory-bank/memory-bank/ directory
-5. [2025-12-11] Force-pushed clean history to GitHub
-6. [2025-12-11] Migrated private keys to pass (GPG-encrypted)
-7. [2025-12-11] Moved public keys to public/ directory
-8. [2025-12-11] Pushed to GitHub (hellst0rm/nix-keys - private)
+
+1. [2025-12-12] Replaced SquashFS disk with Ventoy image creation
+2. [2025-12-12] Consolidated qemu.nix into create.nix
+3. [2025-12-12] Added ventoy, libguestfs, util-linux dependencies
+4. [2025-12-12] Renamed memory-bank/ to .agent-memory/ with kebab-case files
+5. [2025-12-12] Re-registered project with Basic Memory at new path
+6. [2025-12-11] Git history fully sanitized - squashed to single commit
+7. [2025-12-11] Migrated private keys to pass (GPG-encrypted)
+8. [2025-12-11] Moved public keys to public/ directory
+9. [2025-12-11] Pushed to GitHub (hellst0rm/nix-keys - private)
+
 
 ## Active Decisions
 
