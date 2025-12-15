@@ -96,16 +96,12 @@ pog.pog {
             fi
           fi
 
-          # Extract deploy keys from pass
-          if pass show "hosts/$host/deploy_key_ed25519" &>/dev/null; then
-            cyan "Extracting deploy keys (requires Yubikey)..."
-            mkdir -p "$temp_dir/root/.ssh"
-            pass show "hosts/$host/deploy_key_ed25519" > "$temp_dir/root/.ssh/deploy_key_ed25519"
-            chmod 600 "$temp_dir/root/.ssh/deploy_key_ed25519"
-            # Copy public key from public/
-            if [ -f "public/hosts/$host/deploy_key_ed25519.pub" ]; then
-              cp "public/hosts/$host/deploy_key_ed25519.pub" "$temp_dir/root/.ssh/"
-            fi
+          # Extract FlakeHub token from pass
+          if pass show "hosts/$host/flakehub_token" &>/dev/null; then
+            cyan "Extracting FlakeHub token (requires Yubikey)..."
+            mkdir -p "$temp_dir/nix/var/determinate"
+            pass show "hosts/$host/flakehub_token" > "$temp_dir/nix/var/determinate/flakehub-token"
+            chmod 600 "$temp_dir/nix/var/determinate/flakehub-token"
           fi
 
           # Extract user keys if specified

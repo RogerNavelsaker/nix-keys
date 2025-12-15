@@ -3,13 +3,13 @@
 
 pog.pog {
   name = "genkey";
-  version = "2.0.0";
-  description = "Generate SSH keys for hosts and users (stored in pass)";
+  version = "3.0.0";
+  description = "Generate SSH keys and store FlakeHub tokens (stored in pass)";
 
   arguments = [
     {
       name = "type";
-      description = "key type: host, deploy, or user";
+      description = "key type: host, flakehub, or user";
     }
     {
       name = "name";
@@ -68,29 +68,22 @@ pog.pog {
         cat "$PUB_DIR/ssh_host_ed25519_key.pub"
         ;;
 
-      deploy)
-        PUB_DIR="public/hosts/$NAME"
-        PASS_PATH="hosts/$NAME/deploy_key_ed25519"
-        KEY_FILE="$TEMP_DIR/deploy_key_ed25519"
+      flakehub)
+        PASS_PATH="hosts/$NAME/flakehub_token"
 
-        mkdir -p "$PUB_DIR"
+        green "Storing FlakeHub token for: $NAME"
+        echo ""
+        cyan "Generate a token at: https://flakehub.com/user/settings?editview=tokens"
+        echo "Paste the token below (will be stored in pass, requires Yubikey):"
+        echo ""
 
-        green "Generating deploy key for: $NAME"
-        ssh-keygen -t ed25519 -f "$KEY_FILE" -N "" -C "deploy@$NAME"
-
-        cyan "Storing private key in pass (requires Yubikey)..."
-        pass insert -m "$PASS_PATH" < "$KEY_FILE"
-
-        mv "$KEY_FILE.pub" "$PUB_DIR/deploy_key_ed25519.pub"
-        chmod 644 "$PUB_DIR/deploy_key_ed25519.pub"
+        pass insert "$PASS_PATH"
 
         echo ""
-        green "✓ Deploy key generated"
-        echo "  Private: pass show $PASS_PATH"
-        echo "  Public:  $PUB_DIR/deploy_key_ed25519.pub"
+        green "✓ FlakeHub token stored"
+        echo "  Retrieve: pass show $PASS_PATH"
         echo ""
-        cyan "Public key (add to GitHub/GitLab):"
-        cat "$PUB_DIR/deploy_key_ed25519.pub"
+        cyan "Usage: determinate-nixd login token --token-file <(pass show $PASS_PATH)"
         ;;
 
       user)
@@ -119,7 +112,7 @@ pog.pog {
         ;;
 
       *)
-        die "Error: Unknown type '$TYPE'. Valid types: host, deploy, user"
+        die "Error: Unknown type '$TYPE'. Valid types: host, flakehub, user"
         ;;
     esac
   '';
