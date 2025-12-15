@@ -10,4 +10,5 @@ in
   inspect = call ./inspect.nix;
   list = call ./list.nix;
   show = call ./show.nix;
+  nixos-anywhere = call ./nixos-anywhere.nix;
 }
