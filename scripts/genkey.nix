@@ -28,7 +28,7 @@ pog.pog {
     TYPE="$1"
     NAME="$2"
 
-    export PASSWORD_STORE_DIR="./private"
+    export PASSWORD_STORE_DIR="$PWD/private"
 
     if ${helpers.var.empty "TYPE"}; then
       die "Error: Type required (host, deploy, or user)"

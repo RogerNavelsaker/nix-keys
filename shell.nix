@@ -17,6 +17,7 @@ pkgs.devshell.mkShell {
     # Key generation
     openssh
     gh # GitHub CLI for uploading deploy keys
+    fh
 
     # Pass (password-store) for encrypted key storage
     pass
@@ -43,7 +44,7 @@ pkgs.devshell.mkShell {
     {
       category = "generate";
       name = "genkey";
-      help = "Generate SSH keys: genkey <host|deploy|user> <name> (--help for details)";
+      help = "Generate SSH keys: genkey <host|flakehub|user> <name> (--help for details)";
       command = ''
         ${scripts.genkey}/bin/genkey "$@"
       '';

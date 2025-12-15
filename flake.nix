@@ -9,7 +9,7 @@
     flake-utils.url = "https://flakehub.com/f/numtide/flake-utils/0.1.*.tar.gz";
 
     devshell = {
-      url = "https://flakehub.com/f/numtide/devshell/0.1.*.tar.gz";
+      url = "github:numtide/devshell";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
