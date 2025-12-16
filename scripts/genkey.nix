@@ -9,7 +9,7 @@ pog.pog {
   arguments = [
     {
       name = "type";
-      description = "key type: host, flakehub, or user";
+      description = "key type: host, deploy, flakehub, or user";
     }
     {
       name = "name";
@@ -31,7 +31,7 @@ pog.pog {
     export PASSWORD_STORE_DIR="$PWD/private"
 
     if ${helpers.var.empty "TYPE"}; then
-      die "Error: Type required (host, deploy, or user)"
+      die "Error: Type required (host, deploy, flakehub, or user)"
     fi
 
     if ${helpers.var.empty "NAME"}; then
@@ -66,6 +66,34 @@ pog.pog {
         echo ""
         cyan "Public key:"
         cat "$PUB_DIR/ssh_host_ed25519_key.pub"
+        ;;
+
+      deploy)
+        PUB_DIR="public/hosts/$NAME"
+        PASS_PATH="hosts/$NAME/deploy_key_ed25519"
+        KEY_FILE="$TEMP_DIR/deploy_key_ed25519"
+
+        mkdir -p "$PUB_DIR"
+
+        green "Generating deploy key for: $NAME"
+        ssh-keygen -t ed25519 -f "$KEY_FILE" -N "" -C "deploy@$NAME"
+
+        cyan "Storing private key in pass (requires Yubikey)..."
+        pass insert -m "$PASS_PATH" < "$KEY_FILE"
+
+        mv "$KEY_FILE.pub" "$PUB_DIR/deploy_key_ed25519.pub"
+        chmod 644 "$PUB_DIR/deploy_key_ed25519.pub"
+
+        echo ""
+        green "✓ Deploy key generated"
+        echo "  Private: pass show $PASS_PATH"
+        echo "  Public:  $PUB_DIR/deploy_key_ed25519.pub"
+        echo ""
+        cyan "Public key (add to GitHub repo):"
+        cat "$PUB_DIR/deploy_key_ed25519.pub"
+        echo ""
+        cyan "Upload to GitHub:"
+        echo "  deploy add $NAME <owner/repo>"
         ;;
 
       flakehub)
@@ -112,7 +140,7 @@ pog.pog {
         ;;
 
       *)
-        die "Error: Unknown type '$TYPE'. Valid types: host, flakehub, user"
+        die "Error: Unknown type '$TYPE'. Valid types: host, deploy, flakehub, user"
         ;;
     esac
   '';

@@ -50,7 +50,7 @@ pog.pog {
           die "Error: Hostname and repository required\nUsage: deploy add <hostname> <owner/repo> [--rw]"
         fi
 
-        KEY_FILE="hosts/$HOST/deploy_key_ed25519.pub"
+        KEY_FILE="public/hosts/$HOST/deploy_key_ed25519.pub"
 
         if ${helpers.file.notExists "KEY_FILE"}; then
           die "Error: Deploy key not found: $KEY_FILE\nRun: genkey deploy $HOST"
@@ -79,7 +79,7 @@ pog.pog {
           die "Error: Hostname and repository required\nUsage: deploy remove <hostname> <owner/repo>"
         fi
 
-        KEY_FILE="hosts/$HOST/deploy_key_ed25519.pub"
+        KEY_FILE="public/hosts/$HOST/deploy_key_ed25519.pub"
 
         if ${helpers.file.notExists "KEY_FILE"}; then
           die "Error: Deploy key not found: $KEY_FILE"
