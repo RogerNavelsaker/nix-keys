@@ -11,20 +11,20 @@ tags:
 
 ## Current Focus
 
-Repository migrated to pass + Yubikey GPG encryption model.
+Flexible auth: choose between FlakeHub token or deploy key for private flake access.
 
 ## Recent Events
 
-
-1. [2025-12-12] Replaced SquashFS disk with Ventoy image creation
-2. [2025-12-12] Consolidated qemu.nix into create.nix
-3. [2025-12-12] Added ventoy, libguestfs, util-linux dependencies
-4. [2025-12-12] Renamed memory-bank/ to .agent-memory/ with kebab-case files
-5. [2025-12-12] Re-registered project with Basic Memory at new path
-6. [2025-12-11] Git history fully sanitized - squashed to single commit
-7. [2025-12-11] Migrated private keys to pass (GPG-encrypted)
-8. [2025-12-11] Moved public keys to public/ directory
-9. [2025-12-11] Pushed to GitHub (hellst0rm/nix-keys - private)
+1. [2025-12-16] Added deploy key type to genkey command
+2. [2025-12-16] Added --auth flag to create: flakehub, deploy, both, or auto-detect
+3. [2025-12-16] Deploy key extraction to /root/.ssh/ with SSH config for GitHub
+4. [2025-12-16] Fixed deploy.nix to use public/ directory path
+5. [2025-12-15] Released v0.1.1 - fixed genkey PASSWORD_STORE_DIR bug
+6. [2025-12-15] Fixed genkey script: use $PWD/private instead of ./private
+7. [2025-12-15] Added FlakeHub token for iso host
+8. [2025-12-15] Added fh CLI to devshell
+9. [2025-12-12] Replaced SquashFS disk with Ventoy image creation
+10. [2025-12-12] Consolidated qemu.nix into create.nix
 
 
 ## Active Decisions
@@ -34,6 +34,7 @@ Repository migrated to pass + Yubikey GPG encryption model.
 - Yubikey required for all decryption operations
 - Repository can be safely pushed to GitHub (private)
 - GPG Key ID: 82D7B6F3AF8297688F10508CB692AA74EC31CD0B
+- Auth method selectable: FlakeHub token OR deploy key OR both
 
 ## Security Model
 
