@@ -53,7 +53,7 @@
         };
 
         hooks = git-hooks.lib.${system}.run {
-          src = self;
+          src = ./.;
           hooks = import ./githooks.nix { inherit pkgs; };
         };
 
