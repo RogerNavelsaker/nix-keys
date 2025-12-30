@@ -13,19 +13,20 @@ pkgs.devshell.mkShell {
     $(type -p menu &>/dev/null && menu)
   '';
 
+  # Central provides: git, fd, rg, bat, eza, jq, nixfmt, deadnix, statix, nix-tree, nixd
   packages = with pkgs; [
     # Key generation
     openssh
-    gh # GitHub CLI for uploading deploy keys
+    gh
     fh
 
-    # Pass (password-store) for encrypted key storage
+    # Pass (password-store)
     pass
     gnupg
 
     # Disk image tools
-    ventoy # Ventoy USB/disk image creation
-    libguestfs-with-appliance # guestmount for FUSE mounting
+    ventoy
+    libguestfs-with-appliance
 
     # Archive tools
     gnutar
@@ -35,8 +36,7 @@ pkgs.devshell.mkShell {
     coreutils
     findutils
     tree
-    util-linux # losetup
-    jq # JSON processing
+    util-linux
   ];
 
   commands = [
