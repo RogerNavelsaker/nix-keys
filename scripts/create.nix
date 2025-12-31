@@ -1,28 +1,30 @@
 # scripts/create.nix
+# Create key archives for deployment
+# Two modes:
+#   - archive: Decrypted keys (requires Yubikey at build time)
+#   - injection: Encrypted pass store for Ventoy (GPG unlock at boot)
 { pkgs, pog }:
 
 pog.pog {
   name = "create";
-  version = "3.0.0";
-  description = "Create archive or Ventoy disk for key distribution";
+  version = "5.0.0";
+  description = "Create key archives: decrypted (archive) or encrypted (injection)";
 
   arguments = [
     {
-      name = "format";
-      description = "output format: archive (tar.gz) or disk (Ventoy image)";
-    }
-    {
-      name = "hostname";
-      description = "hostname to include keys for";
-    }
-    {
-      name = "iso-path";
-      description = "ISO file path (required for disk format)";
-      optional = true;
+      name = "action";
+      description = "action: archive, injection, info";
     }
   ];
 
   flags = [
+    {
+      name = "host";
+      short = "H";
+      description = "hostname for key lookup";
+      argument = "HOST";
+      default = "";
+    }
     {
       name = "output";
       short = "o";
@@ -37,357 +39,324 @@ pog.pog {
       argument = "USERS";
       default = "";
     }
-    {
-      name = "auth";
-      short = "a";
-      description = "auth method for private flakes: flakehub, deploy, or both (default: auto-detect)";
-      argument = "METHOD";
-      default = "";
-    }
   ];
 
   runtimeInputs = with pkgs; [
-    ventoy
-    libguestfs-with-appliance
-    util-linux
     gnutar
     gzip
     coreutils
     findutils
-    tree
     pass
     gnupg
+    tree
   ];
 
   script = helpers: ''
-            FORMAT="$1"
-            HOST="$2"
-            ISO_PATH="$3"
+        ACTION="$1"
 
-            export PASSWORD_STORE_DIR="./private"
+        # Action: archive (decrypted keys - requires Yubikey)
+        do_archive() {
+          HOST="$host"
+          if ${helpers.var.empty "HOST"}; then
+            die "Error: --host required for archive\nUsage: create archive -H <hostname> [-u users] [-o output.tar.gz]"
+          fi
 
-            if ${helpers.var.empty "FORMAT"}; then
-              die "Error: Format required (archive or disk)"
+          export PASSWORD_STORE_DIR="./private"
+
+          # Check if host exists in pass
+          if ! pass show "hosts/$HOST/ssh_host_ed25519_key" &>/dev/null; then
+            die "Error: Host keys not found in pass: hosts/$HOST\nRun: genkey host $HOST"
+          fi
+
+          OUTPUT="$output"
+          if ${helpers.var.empty "OUTPUT"}; then
+            OUTPUT="$HOST-keys.tar.gz"
+          fi
+
+          green "Creating decrypted key archive for host '$HOST': $OUTPUT"
+          yellow "Note: This requires Yubikey and decrypts keys at build time"
+          echo ""
+
+          TEMP_DIR=$(mktemp -d)
+          trap 'rm -rf $TEMP_DIR' EXIT
+
+          # Extract SSH host keys from pass
+          cyan "Extracting SSH host keys (requires Yubikey)..."
+          mkdir -p "$TEMP_DIR/etc/ssh"
+          pass show "hosts/$HOST/ssh_host_ed25519_key" > "$TEMP_DIR/etc/ssh/ssh_host_ed25519_key"
+          chmod 600 "$TEMP_DIR/etc/ssh/ssh_host_ed25519_key"
+          # Copy public key
+          if [ -f "public/hosts/$HOST/ssh_host_ed25519_key.pub" ]; then
+            cp "public/hosts/$HOST/ssh_host_ed25519_key.pub" "$TEMP_DIR/etc/ssh/"
+          fi
+
+          # Extract deploy key if exists
+          if pass show "hosts/$HOST/deploy_key_ed25519" &>/dev/null; then
+            cyan "Extracting deploy key (requires Yubikey)..."
+            mkdir -p "$TEMP_DIR/root/.ssh"
+            pass show "hosts/$HOST/deploy_key_ed25519" > "$TEMP_DIR/root/.ssh/deploy_key_ed25519"
+            chmod 600 "$TEMP_DIR/root/.ssh/deploy_key_ed25519"
+            # Copy public key
+            if [ -f "public/hosts/$HOST/deploy_key_ed25519.pub" ]; then
+              cp "public/hosts/$HOST/deploy_key_ed25519.pub" "$TEMP_DIR/root/.ssh/"
             fi
-
-            if ${helpers.var.empty "HOST"}; then
-              die "Error: Hostname required"
-            fi
-
-            # Cleanup function for disk creation
-            cleanup_on_exit() {
-              if [ -n "$MOUNT_POINT" ] && mountpoint -q "$MOUNT_POINT" 2>/dev/null; then
-                fusermount -u "$MOUNT_POINT" 2>/dev/null || true
-              fi
-              [ -n "$MOUNT_POINT" ] && rmdir "$MOUNT_POINT" 2>/dev/null || true
-              [ -n "$LOOP_DEV" ] && sudo losetup -d "$LOOP_DEV" 2>/dev/null || true
-              [ -n "$TEMP_DIR" ] && rm -rf "$TEMP_DIR"
-              [ -n "$KEYS_ARCHIVE" ] && [ -f "$KEYS_ARCHIVE" ] && rm -f "$KEYS_ARCHIVE"
-            }
-
-            # Function to extract keys from pass to temp directory
-            extract_keys_to_temp() {
-              local host="$1"
-              local temp_dir="$2"
-              local user_list="$3"
-              local auth_method="$4"
-
-              # Extract SSH host keys from pass
-              if pass show "hosts/$host/ssh_host_ed25519_key" &>/dev/null; then
-                cyan "Extracting SSH host keys (requires Yubikey)..."
-                mkdir -p "$temp_dir/etc/ssh"
-                pass show "hosts/$host/ssh_host_ed25519_key" > "$temp_dir/etc/ssh/ssh_host_ed25519_key"
-                chmod 600 "$temp_dir/etc/ssh/ssh_host_ed25519_key"
-                # Copy public key from public/
-                if [ -f "public/hosts/$host/ssh_host_ed25519_key.pub" ]; then
-                  cp "public/hosts/$host/ssh_host_ed25519_key.pub" "$temp_dir/etc/ssh/"
-                fi
-              fi
-
-              # Determine auth method (auto-detect if not specified)
-              local use_flakehub=false
-              local use_deploy=false
-              local has_flakehub=false
-              local has_deploy=false
-
-              pass show "hosts/$host/flakehub_token" &>/dev/null && has_flakehub=true
-              pass show "hosts/$host/deploy_key_ed25519" &>/dev/null && has_deploy=true
-
-              case "$auth_method" in
-                flakehub)
-                  use_flakehub=true
-                  ;;
-                deploy)
-                  use_deploy=true
-                  ;;
-                both)
-                  use_flakehub=true
-                  use_deploy=true
-                  ;;
-                *)
-                  # Auto-detect: use whatever is available
-                  use_flakehub=$has_flakehub
-                  use_deploy=$has_deploy
-                  ;;
-              esac
-
-              # Extract FlakeHub token
-              if [ "$use_flakehub" = true ]; then
-                if [ "$has_flakehub" = true ]; then
-                  cyan "Extracting FlakeHub token (requires Yubikey)..."
-                  mkdir -p "$temp_dir/nix/var/determinate"
-                  pass show "hosts/$host/flakehub_token" > "$temp_dir/nix/var/determinate/flakehub-token"
-                  chmod 600 "$temp_dir/nix/var/determinate/flakehub-token"
-                else
-                  yellow "Warning: FlakeHub token not found for $host (skipping)"
-                fi
-              fi
-
-              # Extract deploy key
-              if [ "$use_deploy" = true ]; then
-                if [ "$has_deploy" = true ]; then
-                  cyan "Extracting deploy key (requires Yubikey)..."
-                  mkdir -p "$temp_dir/root/.ssh"
-                  pass show "hosts/$host/deploy_key_ed25519" > "$temp_dir/root/.ssh/deploy_key"
-                  chmod 600 "$temp_dir/root/.ssh/deploy_key"
-                  # Copy public key
-                  if [ -f "public/hosts/$host/deploy_key_ed25519.pub" ]; then
-                    cp "public/hosts/$host/deploy_key_ed25519.pub" "$temp_dir/root/.ssh/deploy_key.pub"
-                  fi
-                  # Create SSH config for GitHub
-                  cat > "$temp_dir/root/.ssh/config" << 'SSH_EOF'
+            # Create SSH config for GitHub
+            cat > "$TEMP_DIR/root/.ssh/config" << 'SSH_EOF'
     Host github.com
-      IdentityFile /root/.ssh/deploy_key
+      IdentityFile /root/.ssh/deploy_key_ed25519
       IdentitiesOnly yes
       StrictHostKeyChecking accept-new
     SSH_EOF
-                  chmod 600 "$temp_dir/root/.ssh/config"
-                else
-                  yellow "Warning: Deploy key not found for $host (skipping)"
-                fi
-              fi
+            chmod 600 "$TEMP_DIR/root/.ssh/config"
+          fi
 
-              # Extract user keys if specified
-              if ${helpers.var.notEmpty "user_list"}; then
-                if [ "$user_list" = "*" ]; then
-                  # Extract all users from pass
-                  if [ -d "public/home" ]; then
-                    cyan "Extracting all user keys (requires Yubikey)..."
-                    for user_pub_dir in public/home/*; do
-                      if [ -d "$user_pub_dir" ]; then
-                        user=$(basename "$user_pub_dir")
-                        if pass show "home/$user/id_ed25519" &>/dev/null; then
-                          mkdir -p "$temp_dir/home/$user/.ssh"
-                          pass show "home/$user/id_ed25519" > "$temp_dir/home/$user/.ssh/id_ed25519"
-                          chmod 600 "$temp_dir/home/$user/.ssh/id_ed25519"
-                          cp "$user_pub_dir"/*.pub "$temp_dir/home/$user/.ssh/" 2>/dev/null || true
-                        fi
-                      fi
-                    done
-                  fi
-                else
-                  # Extract specific users (comma-separated)
-                  IFS=',' read -ra USERS <<< "$user_list"
-                  for user in "''${USERS[@]}"; do
-                    user=$(echo "$user" | xargs)  # trim whitespace
-                    if pass show "home/$user/id_ed25519" &>/dev/null; then
-                      cyan "Extracting keys for user: $user (requires Yubikey)"
-                      mkdir -p "$temp_dir/home/$user/.ssh"
-                      pass show "home/$user/id_ed25519" > "$temp_dir/home/$user/.ssh/id_ed25519"
-                      chmod 600 "$temp_dir/home/$user/.ssh/id_ed25519"
-                      cp "public/home/$user"/*.pub "$temp_dir/home/$user/.ssh/" 2>/dev/null || true
-                    else
-                      yellow "Warning: User key not found in pass: home/$user/id_ed25519 (skipping)"
+          # Extract user keys if specified
+          if ${helpers.var.notEmpty "users"}; then
+            if [ "$users" = "*" ]; then
+              if [ -d "public/users" ]; then
+                cyan "Extracting all user keys (requires Yubikey)..."
+                for user_pub_dir in public/users/*; do
+                  if [ -d "$user_pub_dir" ]; then
+                    user=$(basename "$user_pub_dir")
+                    if pass show "users/$user/id_ed25519" &>/dev/null; then
+                      mkdir -p "$TEMP_DIR/home/$user/.ssh"
+                      pass show "users/$user/id_ed25519" > "$TEMP_DIR/home/$user/.ssh/id_ed25519"
+                      chmod 600 "$TEMP_DIR/home/$user/.ssh/id_ed25519"
+                      cp "$user_pub_dir"/*.pub "$TEMP_DIR/home/$user/.ssh/" 2>/dev/null || true
                     fi
-                  done
-                fi
-              else
-                cyan "No users specified, host keys only"
+                  fi
+                done
               fi
-            }
-
-            # Check if host exists in pass
-            if ! pass show "hosts/$HOST/ssh_host_ed25519_key" &>/dev/null; then
-              die "Error: Host keys not found in pass: hosts/$HOST\nRun: genkey host $HOST"
+            else
+              IFS=',' read -ra USERS <<< "$users"
+              for user in "''${USERS[@]}"; do
+                user=$(echo "$user" | xargs)
+                if pass show "users/$user/id_ed25519" &>/dev/null; then
+                  cyan "Extracting keys for user: $user (requires Yubikey)"
+                  mkdir -p "$TEMP_DIR/home/$user/.ssh"
+                  pass show "users/$user/id_ed25519" > "$TEMP_DIR/home/$user/.ssh/id_ed25519"
+                  chmod 600 "$TEMP_DIR/home/$user/.ssh/id_ed25519"
+                  cp "public/users/$user"/*.pub "$TEMP_DIR/home/$user/.ssh/" 2>/dev/null || true
+                else
+                  yellow "Warning: User key not found: users/$user/id_ed25519 (skipping)"
+                fi
+              done
             fi
+          fi
 
-            case "$FORMAT" in
-              disk)
-                # Validate ISO path
-                if ${helpers.var.empty "ISO_PATH"}; then
-                  die "Error: ISO path required for disk format\nUsage: create disk <hostname> <iso-path>"
-                fi
+          echo ""
+          cyan "Creating tar.gz archive..."
+          ORIGINAL_DIR="$(pwd)"
+          cd "$TEMP_DIR" || die "Failed to change directory"
+          tar czf "$ORIGINAL_DIR/$OUTPUT" ./* 2>/dev/null || true
+          cd "$ORIGINAL_DIR" || die "Failed to return to original directory"
 
-                if [ ! -f "$ISO_PATH" ]; then
-                  die "Error: ISO file not found: $ISO_PATH"
-                fi
-
-                OUTPUT="$output"
-                if ${helpers.var.empty "OUTPUT"}; then
-                  OUTPUT="$HOST-ventoy.img"
-                fi
-
-                trap cleanup_on_exit EXIT
-
-                ISO_NAME=$(basename "$ISO_PATH")
-                green "Creating Ventoy disk for host '$HOST': $OUTPUT"
-                echo "  ISO: $ISO_NAME"
-
-                # Generate keys archive
-                cyan "Generating key injection archive (requires Yubikey)..."
-                KEYS_ARCHIVE=$(mktemp --suffix=.tar.gz)
-
-                # Build flags if specified
-                USER_FLAG=""
-                if ${helpers.var.notEmpty "users"}; then
-                  USER_FLAG="-u $users"
-                fi
-                AUTH_FLAG=""
-                if ${helpers.var.notEmpty "auth"}; then
-                  AUTH_FLAG="-a $auth"
-                fi
-
-                # Create archive (recursive call)
-                # shellcheck disable=SC2086
-                create archive "$HOST" $USER_FLAG $AUTH_FLAG -o "$KEYS_ARCHIVE" || die "Failed to create key archive"
-
-                # Calculate disk size
-                ISO_SIZE=$(stat -c%s "$ISO_PATH")
-                KEYS_SIZE=$(stat -c%s "$KEYS_ARCHIVE")
-                DISK_MB=$(( (ISO_SIZE + KEYS_SIZE) / 1048576 + 150 ))
-                DISK_MB=$(( ((DISK_MB + 63) / 64) * 64 ))  # Round up to 64MB alignment
-                if [ "$DISK_MB" -lt 512 ]; then
-                  DISK_MB=512
-                fi
-
-                cyan "Creating disk image (''${DISK_MB}MB)..."
-                truncate -s "''${DISK_MB}M" "$OUTPUT"
-
-                # Install Ventoy (requires sudo for losetup)
-                cyan "Installing Ventoy to disk image (requires sudo)..."
-                if ! sudo -n true 2>/dev/null; then
-                  yellow "Sudo access required for Ventoy installation."
-                fi
-
-                LOOP_DEV=$(sudo losetup --show -f "$OUTPUT") || die "Failed to create loopback device"
-
-                # Install Ventoy in non-interactive mode with GPT
-                sudo ventoy -i -g "$LOOP_DEV" || {
-                  sudo losetup -d "$LOOP_DEV"
-                  die "Failed to install Ventoy"
-                }
-
-                # Detach loopback - remount with guestmount
-                sudo losetup -d "$LOOP_DEV"
-                LOOP_DEV=""
-
-                # Mount with guestmount (FUSE, no root needed)
-                cyan "Mounting Ventoy partition..."
-                MOUNT_POINT=$(mktemp -d)
-                sleep 1  # Give kernel time to release device
-
-                guestmount -a "$OUTPUT" -m /dev/sda1 "$MOUNT_POINT" || die "Failed to mount Ventoy partition"
-
-                # Copy ISO and keys
-                cyan "Copying ISO to disk..."
-                cp "$ISO_PATH" "$MOUNT_POINT/nixos.iso" || die "Failed to copy ISO"
-
-                cyan "Copying key injection archive..."
-                cp "$KEYS_ARCHIVE" "$MOUNT_POINT/keys.tar.gz" || die "Failed to copy keys archive"
-
-                # Create Ventoy configuration
-                cyan "Writing Ventoy configuration..."
-                mkdir -p "$MOUNT_POINT/ventoy"
-
-                cat > "$MOUNT_POINT/ventoy/ventoy.json" << 'VENTOY_EOF'
-    {
-      "control": [
-        { "VTOY_MENU_TIMEOUT": "5" },
-        { "VTOY_DEFAULT_IMAGE": "/nixos.iso" }
-      ],
-      "injection": [
-        {
-          "image": "/nixos.iso",
-          "archive": "/keys.tar.gz"
+          echo ""
+          green "✓ Archive created: $OUTPUT"
+          echo "  Host: $HOST"
+          echo "  Format: tar.gz (decrypted keys)"
+          echo ""
+          cyan "Contents:"
+          tar tzf "$OUTPUT"
         }
-      ]
-    }
-    VENTOY_EOF
 
-                # Show contents
-                cyan "Disk contents:"
-                ls -lh "$MOUNT_POINT"
+        # Action: injection (encrypted pass store for Ventoy - NO Yubikey needed)
+        do_injection() {
+          HOST="$host"
+          if ${helpers.var.empty "HOST"}; then
+            die "Error: --host required for injection\nUsage: create injection -H <hostname> [-o output.tar.gz]"
+          fi
 
-                # Unmount
-                cyan "Unmounting..."
-                fusermount -u "$MOUNT_POINT"
-                rmdir "$MOUNT_POINT"
-                MOUNT_POINT=""
+          # Validate directories exist
+          if [ ! -d "./private" ]; then
+            die "Error: private/ directory not found"
+          fi
+          if [ ! -d "./public" ]; then
+            die "Error: public/ directory not found"
+          fi
 
-                # Cleanup temp archive
-                rm -f "$KEYS_ARCHIVE"
-                KEYS_ARCHIVE=""
+          # Check host exists
+          if [ ! -d "./private/hosts/$HOST" ]; then
+            die "Error: Host not found: private/hosts/$HOST\nRun: genkey host $HOST"
+          fi
 
-                ACTUAL_SIZE=$(du -h "$OUTPUT" | cut -f1)
+          OUTPUT="$output"
+          if ${helpers.var.empty "OUTPUT"}; then
+            OUTPUT="$HOST-injection.tar.gz"
+          fi
 
-                echo ""
-                green "✓ Ventoy disk created: $OUTPUT"
-                echo "  Host: $HOST"
-                echo "  ISO: $ISO_NAME"
-                echo "  Size: $ACTUAL_SIZE"
-                if ${helpers.var.notEmpty "users"}; then
-                  echo "  Keys: host + $users"
+          green "Creating Ventoy injection archive for host '$HOST': $OUTPUT"
+          cyan "Mode: Encrypted pass store (GPG/Yubikey unlock at boot)"
+          echo ""
+
+          TEMP_DIR=$(mktemp -d)
+          trap 'rm -rf $TEMP_DIR' EXIT
+
+          # Copy encrypted pass store structure
+          cyan "Copying encrypted pass store (private/)..."
+          mkdir -p "$TEMP_DIR/private"
+
+          # Copy .gpg-id
+          if [ -f "./private/.gpg-id" ]; then
+            cp "./private/.gpg-id" "$TEMP_DIR/private/"
+          fi
+
+          # Copy host keys (encrypted .gpg files)
+          mkdir -p "$TEMP_DIR/private/hosts/$HOST"
+          cp -r "./private/hosts/$HOST"/* "$TEMP_DIR/private/hosts/$HOST/" 2>/dev/null || true
+
+          # Copy common host files if exist
+          if [ -d "./private/hosts/common" ]; then
+            mkdir -p "$TEMP_DIR/private/hosts/common"
+            cp -r "./private/hosts/common"/* "$TEMP_DIR/private/hosts/common/" 2>/dev/null || true
+          fi
+
+          # Copy user keys if specified
+          if ${helpers.var.notEmpty "users"}; then
+            if [ "$users" = "*" ]; then
+              if [ -d "./private/users" ]; then
+                cyan "Including all user keys..."
+                cp -r "./private/users" "$TEMP_DIR/private/"
+              fi
+            else
+              IFS=',' read -ra USERS <<< "$users"
+              for user in "''${USERS[@]}"; do
+                user=$(echo "$user" | xargs)
+                if [ -d "./private/users/$user" ]; then
+                  cyan "Including user: $user"
+                  mkdir -p "$TEMP_DIR/private/users/$user"
+                  cp -r "./private/users/$user"/* "$TEMP_DIR/private/users/$user/"
                 else
-                  echo "  Keys: host only"
+                  yellow "Warning: User not found: private/users/$user (skipping)"
                 fi
-                if ${helpers.var.notEmpty "auth"}; then
-                  echo "  Auth: $auth"
-                else
-                  echo "  Auth: auto-detect"
+              done
+            fi
+          fi
+
+          # Copy common user files if exist
+          if [ -d "./private/users/common" ]; then
+            mkdir -p "$TEMP_DIR/private/users/common"
+            cp -r "./private/users/common"/* "$TEMP_DIR/private/users/common/" 2>/dev/null || true
+          fi
+
+          # Copy public keys
+          cyan "Copying public keys (public/)..."
+          mkdir -p "$TEMP_DIR/public"
+
+          # Copy host public keys
+          if [ -d "./public/hosts/$HOST" ]; then
+            mkdir -p "$TEMP_DIR/public/hosts/$HOST"
+            cp -r "./public/hosts/$HOST"/* "$TEMP_DIR/public/hosts/$HOST/" 2>/dev/null || true
+          fi
+
+          # Copy common host public keys
+          if [ -d "./public/hosts/common" ]; then
+            mkdir -p "$TEMP_DIR/public/hosts/common"
+            cp -r "./public/hosts/common"/* "$TEMP_DIR/public/hosts/common/" 2>/dev/null || true
+          fi
+
+          # Copy user public keys if users specified
+          if ${helpers.var.notEmpty "users"}; then
+            if [ "$users" = "*" ]; then
+              if [ -d "./public/users" ]; then
+                cp -r "./public/users" "$TEMP_DIR/public/"
+              fi
+            else
+              IFS=',' read -ra USERS <<< "$users"
+              for user in "''${USERS[@]}"; do
+                user=$(echo "$user" | xargs)
+                if [ -d "./public/users/$user" ]; then
+                  mkdir -p "$TEMP_DIR/public/users/$user"
+                  cp -r "./public/users/$user"/* "$TEMP_DIR/public/users/$user/" 2>/dev/null || true
                 fi
-                echo ""
-                cyan "Test with QEMU:"
-                echo "  qemu-system-x86_64 -enable-kvm -m 4G \\"
-                echo "    -drive file=$OUTPUT,format=raw"
-                ;;
+              done
+            fi
+          fi
 
-              archive)
-                OUTPUT="$output"
-                if ${helpers.var.empty "OUTPUT"}; then
-                  OUTPUT="$HOST-keys.tar.gz"
+          # Copy common user public keys
+          if [ -d "./public/users/common" ]; then
+            mkdir -p "$TEMP_DIR/public/users/common"
+            cp -r "./public/users/common"/* "$TEMP_DIR/public/users/common/" 2>/dev/null || true
+          fi
+
+          # Export GPG public key for boot-time import
+          cyan "Exporting GPG public key..."
+          GPG_ID=$(cat "./private/.gpg-id" 2>/dev/null || echo "")
+          if [ -n "$GPG_ID" ]; then
+            gpg --export --armor "$GPG_ID" > "$TEMP_DIR/private/.gpg-pubkey.asc" 2>/dev/null || \
+              yellow "Warning: Could not export GPG public key"
+          fi
+
+          echo ""
+          cyan "Archive structure:"
+          tree "$TEMP_DIR" 2>/dev/null || find "$TEMP_DIR" -type f
+
+          echo ""
+          cyan "Creating tar.gz archive..."
+          ORIGINAL_DIR="$(pwd)"
+          cd "$TEMP_DIR" || die "Failed to change directory"
+          tar czf "$ORIGINAL_DIR/$OUTPUT" ./* 2>/dev/null || tar czf "$ORIGINAL_DIR/$OUTPUT" *
+          cd "$ORIGINAL_DIR" || die "Failed to return to original directory"
+
+          ACTUAL_SIZE=$(du -h "$OUTPUT" | cut -f1)
+
+          echo ""
+          green "✓ Injection archive created: $OUTPUT"
+          echo "  Host: $HOST"
+          echo "  Size: $ACTUAL_SIZE"
+          echo "  Format: tar.gz (encrypted, GPG unlock at boot)"
+          echo ""
+          yellow "Usage:"
+          echo "  This archive is for Ventoy disk injection."
+          echo "  Use: nix-repos ventoy create -H $HOST --injection $OUTPUT"
+        }
+
+        # Action: info
+        do_info() {
+          echo "nix-keys repository structure:"
+          echo ""
+          echo "Available hosts:"
+          if [ -d "./private/hosts" ]; then
+            for host_dir in ./private/hosts/*; do
+              if [ -d "$host_dir" ]; then
+                host_name=$(basename "$host_dir")
+                if [ "$host_name" != "common" ]; then
+                  echo "  - $host_name"
                 fi
-
-                green "Creating Ventoy archive for host '$HOST': $OUTPUT"
-                TEMP_DIR=$(mktemp -d)
-                trap 'rm -rf $TEMP_DIR' EXIT
-
-                extract_keys_to_temp "$HOST" "$TEMP_DIR" "$users" "$auth"
-
-                echo ""
-                cyan "Creating tar.gz archive..."
-                ORIGINAL_DIR="$(pwd)"
-                cd "$TEMP_DIR" || die "Failed to change directory"
-                tar czf "$ORIGINAL_DIR/$OUTPUT" ./* 2>/dev/null || true
-                cd "$ORIGINAL_DIR" || die "Failed to return to original directory"
-
-                echo ""
-                green "✓ Archive created: $OUTPUT"
-                echo "  Host: $HOST"
-                echo "  Format: tar.gz"
-                echo "  Use: Ventoy injection"
-                if ${helpers.var.notEmpty "auth"}; then
-                  echo "  Auth: $auth"
-                else
-                  echo "  Auth: auto-detect"
+              fi
+            done
+          fi
+          echo ""
+          echo "Available users:"
+          if [ -d "./private/users" ]; then
+            for user_dir in ./private/users/*; do
+              if [ -d "$user_dir" ]; then
+                user_name=$(basename "$user_dir")
+                if [ "$user_name" != "common" ]; then
+                  echo "  - $user_name"
                 fi
-                echo ""
-                cyan "Contents:"
-                tar tzf "$OUTPUT"
-                ;;
+              fi
+            done
+          fi
+        }
 
-              *)
-                die "Error: Unknown format '$FORMAT'. Valid formats: disk, archive"
-                ;;
-            esac
+        # Main dispatch
+        case "$ACTION" in
+          archive)
+            do_archive
+            ;;
+          injection)
+            do_injection
+            ;;
+          info)
+            do_info
+            ;;
+          "")
+            die "Error: Action required\n\nActions:\n  archive    - Create decrypted key archive (requires Yubikey)\n  injection  - Create encrypted pass store for Ventoy (no Yubikey needed)\n  info       - Show available hosts and users\n\nFlags:\n  -H, --host HOST    - Hostname for key lookup (required)\n  -o, --output FILE  - Output filename\n  -u, --users USERS  - Users to include (comma-separated or '*')\n\nExamples:\n  create archive -H iso              # Decrypted keys (requires Yubikey)\n  create archive -H iso -u rona      # Include user keys\n  create injection -H iso            # Encrypted for Ventoy boot\n  create injection -H iso -u '*'     # Include all users\n  create info                        # List hosts/users"
+            ;;
+          *)
+            die "Unknown action: $ACTION\nValid actions: archive, injection, info"
+            ;;
+        esac
   '';
 }
