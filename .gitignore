@@ -1,5 +1,4 @@
-# Local-only repository - keys ARE committed for version control
-# WARNING: This repo should NEVER have a remote configured
+# Repository is public-safe because private key material is stored encrypted.
 
 # Build artifacts
 *.img

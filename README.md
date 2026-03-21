@@ -2,9 +2,11 @@
 
 SSH key management with pass + Yubikey GPG encryption for NixOS ISO deployments.
 
+Preferred interactive environment is Flox + `direnv`, so the development shell does not depend on `flake.nix` or `shell.nix` continuing to evaluate cleanly. The Nix devshell remains available as a fallback while the higher-level helper commands are still being moved out of `shell.nix`.
+
 ## Overview
 
-Private keys are GPG-encrypted via `pass` (password-store). Decryption requires Yubikey physical presence. This allows the repo to be safely backed up to GitHub (private) since all sensitive data is encrypted.
+Private keys are GPG-encrypted via `pass` (password-store). Decryption requires Yubikey physical presence. This allows the repo to be safely hosted publicly because all sensitive data stays encrypted.
 
 ```
 nix-keys/
@@ -21,6 +23,9 @@ nix-keys/
 ```bash
 # Enter development environment
 cd nix-keys
+direnv allow
+
+# Fallback
 nix develop
 
 # Generate keys for a host (requires Yubikey)
@@ -199,6 +204,8 @@ nix develop
 pass show hosts/iso/ssh_host_ed25519_key
 ```
 
+With Flox + `direnv`, `PASSWORD_STORE_DIR` is also set automatically.
+
 ## Key Types
 
 **SSH Host Keys** (`hosts/<hostname>/ssh_host_ed25519_key`)
@@ -231,3 +238,7 @@ The ISO configuration automatically detects and loads keys:
 - No manual intervention needed
 
 See: `../nix-config/hosts/iso/README.md` for ISO configuration details.
+
+## Repository Visibility
+
+This repository is intended to be public. Private key material remains encrypted in `pass` and protected by Yubikey-backed GPG operations.

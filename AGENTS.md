@@ -4,7 +4,7 @@ SSH key management with pass + Yubikey GPG encryption for NixOS deployments.
 
 ## Security Model
 
-Private keys are GPG-encrypted via `pass` (password-store). Decryption requires Yubikey physical presence. The repo can be safely pushed to GitHub (private) since all sensitive data is encrypted.
+Private keys are GPG-encrypted via `pass` (password-store). Decryption requires Yubikey physical presence. The repo can be safely hosted publicly because all sensitive data is encrypted.
 
 ## Repository Structure
 
@@ -111,6 +111,10 @@ GPG Key ID: `82D7B6F3AF8297688F10508CB692AA74EC31CD0B`
 
 The private GPG key resides on Yubikey. Physical touch required for decryption.
 
+## Repository Policy
+
+The repository may be updated directly when appropriate. Sensitive material remains encrypted in Git.
+
 ## Related Repositories
 
 - `nix-config`: Main system configuration (loads keys from disk/archive)
@@ -129,3 +133,8 @@ This is a Nix repository. For AI assistants with MCP support:
 - `sequentialthinking` - Complex reasoning
 
 `.mcp.json` is gitignored - each user configures their own.
+
+## Development Environment
+
+- Preferred interactive environment: Flox + `direnv`
+- `nix develop` remains available as a fallback while command helpers are migrated out of `shell.nix`
