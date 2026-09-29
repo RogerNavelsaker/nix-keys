@@ -136,5 +136,5 @@ This is a Nix repository. For AI assistants with MCP support:
 
 ## Development Environment
 
-- Preferred interactive environment: Flox + `direnv`
-- `nix develop` remains available as a fallback while command helpers are migrated out of `shell.nix`
+- Project-specific packages and helper commands: `nix develop` (Nix flake devshell)
+- Shared workspace tools: Devenv, activated by the workspace `.envrc` through direnv.

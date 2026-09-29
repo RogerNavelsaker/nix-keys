@@ -2,7 +2,7 @@
 
 SSH key management with pass + Yubikey GPG encryption for NixOS ISO deployments.
 
-Preferred interactive environment is Flox + `direnv`, so the development shell does not depend on `flake.nix` or `shell.nix` continuing to evaluate cleanly. The Nix devshell remains available as a fallback while the higher-level helper commands are still being moved out of `shell.nix`.
+Use this repository's Nix flake devshell (`nix develop`) for its key-management packages and helper commands. Shared workspace tools are provided by Devenv through the workspace `.envrc` and direnv.
 
 ## Overview
 
@@ -21,11 +21,8 @@ nix-keys/
 ## Quick Start
 
 ```bash
-# Enter development environment
+# Enter the project-specific environment
 cd nix-keys
-direnv allow
-
-# Fallback
 nix develop
 
 # Generate keys for a host (requires Yubikey)
@@ -204,7 +201,7 @@ nix develop
 pass show hosts/iso/ssh_host_ed25519_key
 ```
 
-With Flox + `direnv`, `PASSWORD_STORE_DIR` is also set automatically.
+The `nix develop` shell sets `PASSWORD_STORE_DIR` to `./private`; outside it, prefix `pass` commands with `PASSWORD_STORE_DIR=./private`.
 
 ## Key Types
 
