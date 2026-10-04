@@ -1,4 +1,3 @@
 defaultRole: pi
 defaultBranch: main
 runBranchPrefix: warren
-agentImage: ghcr.io/rogernavelsaker/warren-agent@sha256:e810f33eb23c5a5959d1209b5eb81b6c811f1aed97632f6abbfb4900b680b41f
